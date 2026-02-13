@@ -40,11 +40,11 @@ class ApiService {
     return this.fetchWithError('/api/attendees', {
       method: 'POST',
       body: JSON.stringify(data),
-    });
+    }) as Promise<Attendee | { ok: false; status: number; message: string }>;
   }
 
   async deleteAttendee(id: string): Promise<void> {
-    return this.fetchWithError('/api/attendees', {
+    await this.fetchWithError('/api/attendees', {
       method: 'DELETE',
       body: JSON.stringify({ id }),
     });
@@ -54,11 +54,11 @@ class ApiService {
     return this.fetchWithError('/api/checkin', {
       method: 'POST',
       body: JSON.stringify({ qrData }),
-    });
+    }) as unknown as Promise<CheckInResult>;
   }
 
   async sendEmail(attendeeId: string, qrCodeBase64: string): Promise<void> {
-    return this.fetchWithError('/api/send-email', {
+    await this.fetchWithError('/api/send-email', {
       method: 'POST',
       body: JSON.stringify({ attendeeId, qrCodeBase64 }),
     });

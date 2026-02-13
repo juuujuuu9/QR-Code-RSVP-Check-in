@@ -15,9 +15,6 @@ import type { Attendee, RSVPFormData, CheckInResult } from '@/types/attendee';
 import { apiService } from '@/services/api';
 import './App.css';
 
-// Generate unique ID
-const generateId = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-
 function App() {
   const [attendees, setAttendees] = useState<Attendee[]>([]);
   const [activeTab, setActiveTab] = useState('rsvp');
@@ -137,7 +134,7 @@ function App() {
 }
 
 // RSVP Form Component
-function RSVPForm({ onSuccess }: { onSuccess: () => void }) {
+function RSVPForm({ onSuccess: _onSuccess }: { onSuccess: () => void }) {
   const [formData, setFormData] = useState<RSVPFormData>({
     firstName: '',
     lastName: '',
@@ -193,7 +190,7 @@ function RSVPForm({ onSuccess }: { onSuccess: () => void }) {
         email: '',
         phone: '',
         company: '',
-        dietaryRestrictions': ''
+        dietaryRestrictions: ''
       });
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -439,7 +436,7 @@ function CheckInScanner({ onCheckIn }: { onCheckIn: () => void }) {
             toast.error('Check-in failed');
           }
         },
-        (errorMessage: string) => {
+        (_errorMessage: string) => {
           // Ignore scanning errors, they're normal while searching
         }
       );
@@ -566,7 +563,7 @@ function CheckInScanner({ onCheckIn }: { onCheckIn: () => void }) {
 }
 
 // Admin Dashboard Component
-function AdminDashboard({ attendees, onDelete, onRefresh }: { 
+function AdminDashboard({ attendees, onDelete: _onDelete, onRefresh }: { 
   attendees: Attendee[], 
   onDelete: () => void,
   onRefresh: () => void
@@ -579,7 +576,7 @@ function AdminDashboard({ attendees, onDelete, onRefresh }: {
     attendee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     attendee.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     attendee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    attendee.company.toLowerCase().includes(searchTerm.toLowerCase())
+    (attendee.company ?? '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const exportToCSV = () => {
@@ -591,7 +588,7 @@ function AdminDashboard({ attendees, onDelete, onRefresh }: {
         attendee.lastName,
         attendee.email,
         attendee.phone,
-        attendee.company,
+        attendee.company ?? '',
         attendee.dietaryRestrictions,
         attendee.checkedIn ? 'Yes' : 'No',
         attendee.checkedInAt ? new Date(attendee.checkedInAt).toLocaleString() : '',
@@ -738,7 +735,7 @@ function AdminDashboard({ attendees, onDelete, onRefresh }: {
                           size="sm"
                           variant="ghost"
                           onClick={async () => {
-                            const qrCode = await generateQRCode(attendee);
+                            await generateQRCode(attendee);
                             setSelectedAttendee(attendee);
                             setShowQR(true);
                           }}
