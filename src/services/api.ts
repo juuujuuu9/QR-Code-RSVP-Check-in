@@ -1,6 +1,6 @@
 import type { Attendee, RSVPFormData, CheckInResult } from '@/types/attendee';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4321';
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? '';
 
 class ApiService {
   private async fetchWithError(url: string, options?: RequestInit) {
@@ -37,10 +37,12 @@ class ApiService {
   }
 
   async createAttendee(data: RSVPFormData): Promise<Attendee | { ok: false; status: number; message: string }> {
-    return this.fetchWithError('/api/attendees', {
+    const res = await this.fetchWithError('/api/attendees', {
       method: 'POST',
       body: JSON.stringify(data),
-    }) as Promise<Attendee | { ok: false; status: number; message: string }>;
+    });
+    if ('ok' in res && res.ok) return (res as { ok: true; data: Attendee }).data;
+    return res as { ok: false; status: number; message: string };
   }
 
   async deleteAttendee(id: string): Promise<void> {

@@ -4,8 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node server/index.js",
     "build": "tsc -b && vite build",
+    "start": "NODE_ENV=production node server/index.js",
+    "setup-db": "node scripts/setup-tables.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -58,7 +60,11 @@
     "tailwind-merge": "^3.4.0",
     "uuid": "^11.0.0",
     "vaul": "^1.1.2",
-    "zod": "^4.3.5"
+    "zod": "^4.3.5",
+    "@neondatabase/serverless": "^0.10.4",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.0",
+    "resend": "^4.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

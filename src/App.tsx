@@ -14,6 +14,8 @@ import { Toaster } from '@/components/ui/sonner';
 import type { Attendee, RSVPFormData } from '@/types/attendee';
 import { apiService } from '@/services/api';
 import { CheckInScanner } from '@/components/CheckInScanner';
+import { QR_GENERATION } from '@/config/qr';
+import QRCode from 'qrcode';
 import './App.css';
 
 function App() {
@@ -55,7 +57,7 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <div className="bg-indigo-600 p-2 rounded-lg">
+              <div className="bg-[#d63a2e] p-2 rounded-lg">
                 <Calendar className="h-6 w-6 text-white" />
               </div>
               <div>
@@ -81,7 +83,7 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {loading && (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d63a2e]"></div>
             <span className="ml-2 text-slate-600">Loading...</span>
           </div>
         )}
@@ -180,9 +182,17 @@ function RSVPForm({ onSuccess: _onSuccess }: { onSuccess: () => void }) {
       const qrCodeDataUrl = await generateQRCode(qrData);
       setGeneratedQR(qrCodeDataUrl);
 
-      // Show preview
+      // Send unique QR to their email with a friendly check-in note
+      try {
+        await apiService.sendEmail(attendee.id, qrCodeDataUrl);
+        toast.success("Registration successful! We've sent your QR code to your email — scan it at check-in.");
+      } catch (err: any) {
+        const msg = err?.message || 'Email not sent';
+        toast.success('Registration successful! Save your QR code below.');
+        toast.error(`Email could not be sent: ${msg}`);
+      }
+
       setShowPreview(true);
-      toast.success('Registration successful!');
 
       // Reset form
       setFormData({
@@ -327,7 +337,7 @@ function RSVPForm({ onSuccess: _onSuccess }: { onSuccess: () => void }) {
           <DialogHeader>
             <DialogTitle>Registration Successful!</DialogTitle>
             <DialogDescription>
-              Your QR code has been generated. Save this for check-in at the event.
+              We've sent your unique QR code to your email. Scan it at check-in — or save / resend from here.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6">
@@ -400,6 +410,7 @@ function AdminDashboard({ attendees, onDelete: _onDelete, onRefresh }: {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAttendee, setSelectedAttendee] = useState<Attendee | null>(null);
   const [showQR, setShowQR] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
   const filteredAttendees = attendees.filter(attendee =>
     attendee.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -448,9 +459,10 @@ function AdminDashboard({ attendees, onDelete: _onDelete, onRefresh }: {
     }
   };
 
-  const generateQRCode = async (attendee: Attendee) => {
+  const loadQRForAttendee = async (attendee: Attendee) => {
     const qrData = JSON.stringify({ id: attendee.id, email: attendee.email });
-    return generateQRCodeDataUrl(qrData);
+    const url = await generateQRCodeDataUrl(qrData);
+    setQrDataUrl(url);
   };
 
   // Rest of the admin component remains the same...
@@ -564,8 +576,8 @@ function AdminDashboard({ attendees, onDelete: _onDelete, onRefresh }: {
                           size="sm"
                           variant="ghost"
                           onClick={async () => {
-                            await generateQRCode(attendee);
                             setSelectedAttendee(attendee);
+                            await loadQRForAttendee(attendee);
                             setShowQR(true);
                           }}
                         >
@@ -600,7 +612,7 @@ function AdminDashboard({ attendees, onDelete: _onDelete, onRefresh }: {
           {selectedAttendee && (
             <div className="text-center space-y-4">
               <img 
-                src={generateQRCode(selectedAttendee) as any} 
+                src={qrDataUrl} 
                 alt="QR Code" 
                 className="mx-auto" 
               />
@@ -616,54 +628,11 @@ function AdminDashboard({ attendees, onDelete: _onDelete, onRefresh }: {
   );
 }
 
-// Helper function to generate QR code
 function generateQRCode(data: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const QRCode = (window as any).QRCode;
-    if (!QRCode) {
-      reject(new Error('QRCode library not loaded'));
-      return;
-    }
-    
-    const qr = new QRCode.qrcode(0, 'L');
-    qr.addData(data);
-    qr.make();
-    
-    const moduleCount = qr.getModuleCount();
-    const cellSize = 4;
-    const margin = cellSize * 4;
-    const size = moduleCount * cellSize + margin * 2;
-    
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    
-    if (!ctx) {
-      reject(new Error('Failed to create canvas context'));
-      return;
-    }
-    
-    // White background
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, size, size);
-    
-    // Black modules
-    ctx.fillStyle = '#000000';
-    for (let row = 0; row < moduleCount; row++) {
-      for (let col = 0; col < moduleCount; col++) {
-        if (qr.isDark(row, col)) {
-          ctx.fillRect(
-            margin + col * cellSize,
-            margin + row * cellSize,
-            cellSize,
-            cellSize
-          );
-        }
-      }
-    }
-    
-    resolve(canvas.toDataURL());
+  return QRCode.toDataURL(data, {
+    width: QR_GENERATION.width,
+    margin: QR_GENERATION.margin,
+    errorCorrectionLevel: QR_GENERATION.errorCorrectionLevel,
   });
 }
 

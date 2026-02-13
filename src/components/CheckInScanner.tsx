@@ -5,6 +5,7 @@ import { Camera, X, RotateCcw, CheckCircle2, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
 import type { CheckInResult } from '@/types/attendee';
 import { apiService } from '@/services/api';
+import { QR_SCANNER } from '@/config/qr';
 
 interface CheckInScannerProps {
   onCheckIn?: () => void;
@@ -30,10 +31,10 @@ export function CheckInScanner({ onCheckIn, standalone = false }: CheckInScanner
       html5QrCodeRef.current = html5QrCode;
 
       const config = {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
-        showTorchButtonIfSupported: true,
+        fps: QR_SCANNER.fps,
+        qrbox: QR_SCANNER.qrbox,
+        aspectRatio: QR_SCANNER.aspectRatio,
+        showTorchButtonIfSupported: QR_SCANNER.showTorchButtonIfSupported,
       };
 
       await html5QrCode.start(

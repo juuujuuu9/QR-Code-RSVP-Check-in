@@ -1,20 +1,20 @@
 /**
  * One-time setup: creates attendees table, indexes, optional sample data, and get_attendance_stats().
- * Loads DATABASE_URL from backend/.env. Idempotent: drops attendees if present, then recreates.
+ * Loads DATABASE_URL from .env at project root. Idempotent: drops attendees if present, then recreates.
  */
 import 'dotenv/config';
 import { neon } from '@neondatabase/serverless';
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
-  console.error('Missing DATABASE_URL. Set it in backend/.env');
+  console.error('Missing DATABASE_URL. Set it in .env at project root.');
   process.exit(1);
 }
 
 const sql = neon(databaseUrl);
 
 async function run(statement) {
-  return sql(statement, []);
+  return sql.query ? sql.query(statement, []) : sql(statement, []);
 }
 
 async function main() {

@@ -50,7 +50,7 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <div className="bg-indigo-600 p-2 rounded-lg">
+              <div className="bg-[#d63a2e] p-2 rounded-lg">
                 <Calendar className="h-6 w-6 text-white" />
               </div>
               <div>
@@ -76,7 +76,7 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {loading && (
           <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d63a2e]"></div>
             <span className="ml-2 text-slate-600">Loading...</span>
           </div>
         )}
