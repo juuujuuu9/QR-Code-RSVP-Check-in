@@ -37,8 +37,12 @@ function App() {
       setAttendees(data);
     } catch (error) {
       console.error('Error loading attendees:', error);
-      setError('Failed to load attendees');
-      toast.error('Failed to load attendees');
+      const message =
+        error instanceof TypeError && error.message === 'Failed to fetch'
+          ? 'Backend unavailable. Start the API server (e.g. npm run dev in backend/).'
+          : 'Failed to load attendees';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -146,6 +150,13 @@ function RSVPForm({ onSuccess }: { onSuccess: () => void }) {
   const [showPreview, setShowPreview] = useState(false);
   const [generatedQR, setGeneratedQR] = useState<string>('');
   const [newAttendee, setNewAttendee] = useState<Attendee | null>(null);
+  const [emailStatus, setEmailStatus] = useState<{ configured: boolean; link: string } | null>(null);
+
+  useEffect(() => {
+    if (showPreview) {
+      apiService.getEmailStatus().then(setEmailStatus).catch(() => setEmailStatus({ configured: false, link: 'https://resend.com/api-keys' }));
+    }
+  }, [showPreview]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,7 +164,17 @@ function RSVPForm({ onSuccess }: { onSuccess: () => void }) {
 
     try {
       // Create attendee via API
-      const attendee = await apiService.createAttendee(formData);
+      const result = await apiService.createAttendee(formData);
+
+      // Handle duplicate email gracefully
+      if ('ok' in result && !result.ok) {
+        toast.info(result.message); // “Email already registered”
+        setLoading(false);
+        return;
+      }
+
+      // Success path
+      const attendee = result as Attendee;
       setNewAttendee(attendee);
 
       // Generate QR code
@@ -172,15 +193,11 @@ function RSVPForm({ onSuccess }: { onSuccess: () => void }) {
         email: '',
         phone: '',
         company: '',
-        dietaryRestrictions: ''
+        dietaryRestrictions': ''
       });
     } catch (error: any) {
       console.error('Registration error:', error);
-      if (error.message?.includes('already registered')) {
-        toast.error('This email is already registered');
-      } else {
-        toast.error('Registration failed. Please try again.');
-      }
+      toast.error('Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -361,6 +378,12 @@ function RSVPForm({ onSuccess }: { onSuccess: () => void }) {
                   <Mail className="h-4 w-4 mr-2" />
                   Send QR Code to Email
                 </Button>
+                {emailStatus && !emailStatus.configured && (
+                  <p className="text-sm text-amber-700 mt-2">
+                    Email not configured. Add <code className="bg-slate-200 px-1 rounded">RESEND_API_KEY</code> in backend/.env —{' '}
+                    <a href={emailStatus.link} target="_blank" rel="noopener noreferrer" className="underline">Get Resend API key</a>
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -588,15 +611,14 @@ function AdminDashboard({ attendees, onDelete, onRefresh }: {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this attendee?')) {
-      try {
-        await apiService.deleteAttendee(id);
-        toast.success('Attendee deleted successfully');
-        onDelete();
-      } catch (error) {
-        console.error('Delete error:', error);
-        toast.error('Failed to delete attendee');
-      }
+    if (!confirm('Are you sure you want to delete this attendee?')) return;
+    try {
+      await apiService.deleteAttendee(id);
+      toast.success('Attendee deleted');
+      window.location.reload();
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete attendee');
     }
   };
 

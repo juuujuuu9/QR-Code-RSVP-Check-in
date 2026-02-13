@@ -2,6 +2,19 @@ import type { APIRoute } from 'astro';
 import { sendQRCodeEmail } from '../../lib/email.js';
 import { getAttendeeById } from '../../lib/database.js';
 
+const RESEND_LINK = 'https://resend.com/api-keys';
+
+export const GET: APIRoute = async () => {
+  const configured = Boolean(process.env.RESEND_API_KEY);
+  return new Response(
+    JSON.stringify({ configured, link: RESEND_LINK }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    }
+  );
+};
+
 export const POST: APIRoute = async ({ request }) => {
   try {
     const { attendeeId, qrCodeBase64 } = await request.json();

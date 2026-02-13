@@ -153,7 +153,17 @@ function RSVPForm({ onSuccess }: { onSuccess: () => void }) {
 
     try {
       // Create attendee via API
-      const attendee = await apiService.createAttendee(formData);
+      const result = await apiService.createAttendee(formData);
+
+      // Handle duplicate email gracefully
+      if ('ok' in result && !result.ok) {
+        toast.info(result.message); // “Email already registered”
+        setLoading(false);
+        return;
+      }
+
+      // Success path
+      const attendee = result as Attendee;
       setNewAttendee(attendee);
 
       // Generate QR code
@@ -176,11 +186,7 @@ function RSVPForm({ onSuccess }: { onSuccess: () => void }) {
       });
     } catch (error: any) {
       console.error('Registration error:', error);
-      if (error.message?.includes('already registered')) {
-        toast.error('This email is already registered');
-      } else {
-        toast.error('Registration failed. Please try again.');
-      }
+      toast.error('Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }

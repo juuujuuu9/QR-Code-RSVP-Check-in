@@ -14,11 +14,17 @@ class ApiService {
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(error.error || `HTTP ${response.status}`);
+        const body = await response.json().catch(() => ({ error: 'Unknown error' }));
+        // Return error info instead of throwing for 409 duplicates
+        if (response.status === 409) {
+          return { ok: false, status: response.status, message: body.error || 'Already registered' };
+        }
+        throw new Error(body.error || `HTTP ${response.status}`);
       }
 
-      return await response.json();
+      const text = await response.text();
+      const data = text ? (() => { try { return JSON.parse(text); } catch { return null; } })() : null;
+      return { ok: true, data };
     } catch (error) {
       console.error(`API call failed: ${url}`, error);
       throw error;
@@ -26,10 +32,11 @@ class ApiService {
   }
 
   async getAllAttendees(): Promise<Attendee[]> {
-    return this.fetchWithError('/api/attendees');
+    const res = await this.fetchWithError('/api/attendees');
+    return (res as { ok: true; data: Attendee[] }).data ?? [];
   }
 
-  async createAttendee(data: RSVPFormData): Promise<Attendee> {
+  async createAttendee(data: RSVPFormData): Promise<Attendee | { ok: false; status: number; message: string }> {
     return this.fetchWithError('/api/attendees', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -55,6 +62,12 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify({ attendeeId, qrCodeBase64 }),
     });
+  }
+
+  async getEmailStatus(): Promise<{ configured: boolean; link: string }> {
+    const res = await fetch(`${API_BASE_URL}/api/send-email`);
+    const data = await res.json().catch(() => ({ configured: false, link: 'https://resend.com/api-keys' }));
+    return { configured: Boolean(data?.configured), link: data?.link || 'https://resend.com/api-keys' };
   }
 }
 
