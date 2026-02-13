@@ -35,12 +35,16 @@ function App() {
       setError(null);
       const data = await apiService.getAllAttendees();
       setAttendees(data);
-    } catch (error) {
-      console.error('Error loading attendees:', error);
-      const message =
-        error instanceof TypeError && error.message === 'Failed to fetch'
-          ? 'Backend unavailable. Start the API server (e.g. npm run dev in backend/).'
-          : 'Failed to load attendees';
+    } catch (err: unknown) {
+      console.error('Error loading attendees:', err);
+      let message = 'Failed to load attendees';
+      if (err instanceof TypeError && err.message === 'Failed to fetch') {
+        message = 'Cannot reach server. Check that the API is running and CORS_ORIGIN includes this site.';
+      } else if (err instanceof Error && (err as Error & { status?: number }).status === 500) {
+        message = 'Server error (e.g. database). Check DATABASE_URL and server logs.';
+      } else if (err instanceof Error && err.message) {
+        message = err.message;
+      }
       setError(message);
       toast.error(message);
     } finally {

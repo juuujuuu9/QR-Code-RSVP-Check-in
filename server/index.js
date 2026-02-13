@@ -11,8 +11,22 @@ import { sendQRCodeEmail } from './email.js';
 const app = express();
 const PORT = Number(process.env.PORT) || 5173;
 const RESEND_LINK = 'https://resend.com/api-keys';
+const CORS_ORIGIN = process.env.CORS_ORIGIN || '';
 
 app.use(express.json());
+
+// CORS: allow configured origin(s); comma-separated in production
+if (CORS_ORIGIN) {
+  app.use((req, res, next) => {
+    const origins = CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean);
+    const origin = req.headers.origin;
+    if (origin && origins.includes(origin)) res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+    next();
+  });
+}
 
 // --- API routes (same behavior as former Astro backend) ---
 
@@ -137,6 +151,9 @@ if (isDev) {
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
   if (isDev) console.log('(Vite dev mode — one process)');
+  if (!process.env.DATABASE_URL) console.warn('DATABASE_URL not set — /api/attendees will fail.');
+  else console.log('Database: configured');
+  if (CORS_ORIGIN) console.log('CORS: allowed origins:', CORS_ORIGIN);
   if (!process.env.RESEND_API_KEY) console.warn('RESEND_API_KEY not set — emails will not be sent.');
   else if (!process.env.FROM_EMAIL) console.warn('FROM_EMAIL not set — using default sender.');
   else console.log('Email: configured (FROM_EMAIL:', process.env.FROM_EMAIL + ')');

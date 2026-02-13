@@ -15,11 +15,13 @@ class ApiService {
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({ error: 'Unknown error' }));
-        // Return error info instead of throwing for 409 duplicates
         if (response.status === 409) {
           return { ok: false, status: response.status, message: body.error || 'Already registered' };
         }
-        throw new Error(body.error || `HTTP ${response.status}`);
+        const msg = body.error || `HTTP ${response.status}`;
+        const err = new Error(msg) as Error & { status?: number };
+        err.status = response.status;
+        throw err;
       }
 
       const text = await response.text();
