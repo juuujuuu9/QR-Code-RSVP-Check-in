@@ -109,15 +109,24 @@ export function CheckInScanner({ onCheckIn, standalone = false }: CheckInScanner
     </div>
   );
 
-  const copyMobileScannerLink = async () => {
+  const handleMobileScannerAction = () => {
     const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/scanner`;
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopyFlash(true);
-      setTimeout(() => setCopyFlash(false), 300);
-      toast.success('Copied! Open this link on a mobile device for mobile scanning.');
-    } catch {
-      toast.error('Could not copy link.');
+    const isMobile =
+      typeof window !== 'undefined' &&
+      (window.matchMedia('(pointer: coarse)').matches ||
+        window.matchMedia('(max-width: 768px)').matches);
+    if (isMobile) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      toast.success('Opening scanner in new tab.');
+    } else {
+      navigator.clipboard.writeText(url).then(
+        () => {
+          setCopyFlash(true);
+          setTimeout(() => setCopyFlash(false), 300);
+          toast.success('Copied! Open this link on a mobile device for mobile scanning.');
+        },
+        () => toast.error('Could not copy link.')
+      );
     }
   };
 
@@ -155,15 +164,15 @@ export function CheckInScanner({ onCheckIn, standalone = false }: CheckInScanner
         )}
       </div>
       <Button
-        onClick={copyMobileScannerLink}
+        onClick={handleMobileScannerAction}
         variant="outline"
         size={standalone ? 'lg' : 'default'}
         className={`w-full transition-colors duration-150 bg-slate-200 text-slate-600 border-slate-300 hover:bg-slate-300 ${
           copyFlash ? 'bg-red-500! text-white! border-red-500!' : ''
         }`}
       >
-        <Copy className="h-4 w-4 mr-2" />
-        Mobile Scanner (copy link for mobile devices)
+        <Copy className="h-4 w-4 mr-2 hidden md:inline-block" />
+        Mobile Scanner
       </Button>
     </div>
   );
