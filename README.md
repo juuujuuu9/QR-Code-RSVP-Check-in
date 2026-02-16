@@ -1,91 +1,111 @@
-# QR Check-In — One Repo (Astro + Tailwind + React)
+# QR Check-In
 
-Single-repo event RSVP & check-in app: Astro as the shell, Tailwind for styling, React for interactive UI. **One deploy** (Vercel), **no separate API server**, **no CORS** — frontend and API share the same origin.
+Event RSVP and check-in app: guests RSVP and receive a QR code; staff scan codes to check people in. **One repo**, **one deploy** (Vercel) — Astro for pages and API routes, no separate backend or CORS.
+
+## Requirements
+
+- **Node 20+**
+- PostgreSQL (e.g. [Neon](https://neon.tech))
+- [Resend](https://resend.com) account for optional QR email delivery
 
 ## Quick Start
 
-1. **Copy env** from your existing app (or `.env.example`):
+1. **Copy env** and fill in your values:
    ```bash
    cp .env.example .env
-   # Edit .env with DATABASE_URL, RESEND_API_KEY, FROM_EMAIL, FROM_NAME
    ```
+   Edit `.env`: `DATABASE_URL`, `RESEND_API_KEY`, `FROM_EMAIL`, `FROM_NAME`.
 
-2. **Setup database** (one-time):
+2. **Create the database table** (one-time):
    ```bash
    npm run setup-db
    ```
+   Uses `DATABASE_URL` from `.env`. Idempotent; re-running drops and recreates the `attendees` table.
 
 3. **Run locally**:
    ```bash
    npm run dev
    ```
-   Open http://localhost:4321
+   Open http://localhost:4321 (or the port in `PORT`).
 
-4. **Deploy to Vercel**: See [Deploy to Vercel](#deploy-to-vercel) below.
+4. **Deploy**: See [Deploy to Vercel](#deploy-to-vercel) below.
 
 ## Flow
 
-1. **RSVP** — Guests submit form; attendee created in DB; QR code generated.
-2. **QR code** — Shown on screen and optionally emailed via Resend.
-3. **Check-in** — Staff scans QR with camera; attendee marked checked-in.
-4. **Admin** — List attendees, search, delete, export CSV, resend QR emails.
+1. **RSVP** — Guest submits form → attendee stored in DB → QR code generated and shown (and optionally emailed via Resend).
+2. **Check-in** — Staff scans QR (camera or standalone `/scanner` page) → attendee marked checked-in.
+3. **Admin** — List attendees, search, delete, export CSV, resend QR emails.
 
 ## Tech Stack
 
-| Layer        | Choice              |
-|-------------|----------------------|
-| Framework   | Astro (pages + API routes) |
-| Styling     | Tailwind CSS        |
-| Interactivity | React (islands)   |
-| QR generate | qrcode              |
-| QR scan     | html5-qrcode        |
-| DB          | Neon Postgres       |
-| Email       | Resend              |
+| Layer          | Choice                          |
+|----------------|----------------------------------|
+| Framework      | Astro 5 (pages + API routes)     |
+| Styling        | Tailwind CSS 4                   |
+| Interactivity  | React 19 (islands)               |
+| QR generation  | `qrcode`                         |
+| QR scanning    | `html5-qrcode`                   |
+| Database       | Neon Postgres (`@neondatabase/serverless`) |
+| Email          | Resend                           |
+| UI primitives  | Radix UI, Lucide icons, Sonner toasts |
+
+## Project Structure
+
+```
+src/
+  components/     # React: AppShell, RSVPForm, CheckInScanner, AdminDashboard + ui/
+  layouts/        # Layout.astro
+  lib/            # db, email, utils
+  pages/          # index.astro, scanner.astro, api/*.ts
+  services/       # api.ts (client API helpers)
+  styles/         # global.css
+  types/          # attendee.ts
+  config/         # qr.ts
+scripts/
+  setup-tables.mjs   # One-time DB table creation
+```
 
 ## Environment Variables
 
-Same as your original app:
+| Variable         | Required | Description |
+|------------------|----------|-------------|
+| `DATABASE_URL`   | Yes      | PostgreSQL connection string (e.g. Neon) |
+| `RESEND_API_KEY` | Yes      | Resend API key |
+| `FROM_EMAIL`     | Yes      | Sender address (e.g. `onboarding@resend.dev` for testing) |
+| `FROM_NAME`      | Yes      | Sender display name |
+| `PORT`           | No       | Dev server port (default `4321`) |
 
-- `DATABASE_URL` — Neon (or Postgres) connection string
-- `RESEND_API_KEY` — Resend API key
-- `FROM_EMAIL` — Sender email (e.g. onboarding@resend.dev for testing)
-- `FROM_NAME` — Sender name
-- `PORT` — Optional (default 4321)
-
-No `VITE_API_URL` or `CORS_ORIGIN` — everything is same-origin.
+No `VITE_API_URL` or CORS — frontend and API are same-origin.
 
 ## Scripts
 
-| Command       | Action                              |
-|---------------|-------------------------------------|
-| `npm run dev` | Start dev server (localhost:4321)   |
-| `npm run build` | Build for production             |
-| `npm run preview` | Preview production build        |
-| `npm run setup-db` | Create attendees table (one-time) |
-
-## Deploy to Vercel
-
-1. **Connect the repo** in [Vercel](https://vercel.com): New Project → Import this Git repo. Vercel will detect Astro and use the existing `vercel.json` and `@astrojs/vercel` adapter.
-
-2. **Set environment variables** in the project’s Vercel dashboard (Settings → Environment Variables). Add the same vars as in `.env.example`:
-   - `DATABASE_URL` — Neon (or Postgres) connection string
-   - `RESEND_API_KEY` — Resend API key
-   - `FROM_EMAIL` — Sender email (e.g. `onboarding@resend.dev` for testing)
-   - `FROM_NAME` — Sender name (e.g. `Event Check-In`)
-
-3. **Create the database table** (one-time): After the first deploy, run the setup script against your production DB (e.g. from your machine with `DATABASE_URL` pointing at your Neon DB):
-   ```bash
-   DATABASE_URL="your-production-database-url" npm run setup-db
-   ```
-
-4. **Deploy**: Push to the connected branch or trigger a deploy from the Vercel dashboard.
-
-The project is configured with Node 20+, `vercel.json`, and `.vercelignore`; no extra build settings are required.
+| Command           | Action |
+|-------------------|--------|
+| `npm run dev`     | Start dev server |
+| `npm run build`   | Production build |
+| `npm run preview` | Preview production build locally |
+| `npm run setup-db`| Create/reset `attendees` table (reads `.env`) |
 
 ## Routes
 
-- `/` — Main app (RSVP, Check-in, Admin tabs)
-- `/scanner` — Standalone check-in scanner page
-- `/api/attendees` — GET/POST/DELETE
-- `/api/checkin` — POST
-- `/api/send-email` — GET/POST
+| Path              | Purpose |
+|-------------------|--------|
+| `/`               | Main app (RSVP, Check-in, Admin tabs) |
+| `/scanner`        | Standalone check-in scanner |
+| `GET/POST /api/attendees` | List and create attendees |
+| `DELETE /api/attendees?id=...` | Delete attendee |
+| `POST /api/checkin`       | Mark attendee checked-in (body: `{ id }`) |
+| `GET/POST /api/send-email`| Send/resend QR email to attendee |
+
+## Deploy to Vercel
+
+1. **Connect the repo** in [Vercel](https://vercel.com): New Project → Import this repo. Astro and `vercel.json` are auto-detected.
+
+2. **Set environment variables** in the project (Settings → Environment Variables). Add: `DATABASE_URL`, `RESEND_API_KEY`, `FROM_EMAIL`, `FROM_NAME`.
+
+3. **Create the table** (one-time). After first deploy, run against your production DB:
+   ```bash
+   DATABASE_URL="your-production-url" npm run setup-db
+   ```
+
+4. **Deploy** via push or from the Vercel dashboard. Node 20+, `vercel.json`, and `.vercelignore` are already set.
